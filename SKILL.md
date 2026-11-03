@@ -1,5 +1,8 @@
 ---
 name: dataview-visualize
+slug: dataview-visualize
+displayName: dataview-visualize
+version: 1.0.0
 description: 数据大屏设计与生成（1920×1080 指挥屏 / 驾驶舱 / 运营看板）。复用工作区已有的样式基座与设计规范，先确认布局与风格，再以多方案模式产出零依赖 HTML 大屏，自带模块标题双击编辑与分步看板导读。凡用户提到大屏、数据可视化大屏、驾驶舱、指挥屏、运营看板、监控大屏、投屏、汇报屏、领导驾驶舱，或要求把指标/业务数据做成可投屏展示，即使没说"大屏"二字也应使用本技能。
 ---
 
