@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全国仓储物流运行大屏</title>
+<link rel="stylesheet" href="大屏基座.css">
+<style>
+/* ===== S1 科技蓝 HUD：基座即默认风格，无需令牌覆盖 ===== */
+
+/* ===== 布局：L3 中心地图（两翼列 + 节点卡叠放在地图面板上层） ===== */
+main{display:flex; flex-direction:column; gap:10px; padding-top:10px;}
+.kpis{grid-template-columns:repeat(6,1fr);}
+
+.mid{flex:1; min-height:0; display:grid; grid-template-columns:282px 1fr 282px; gap:12px;}
+.wingcol{display:grid; grid-template-rows:1fr 1fr; gap:12px; min-height:0;}
+
+/* 左翼上：区域吞吐占比 */
+.share{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding-top:2px;}
+.srow{display:grid; grid-template-columns:52px 1fr 44px; gap:8px; align-items:center; font-size:11.5px; color:var(--text-2);}
+.srow .track{height:8px; background:rgba(255,255,255,.08); border-radius:4px; overflow:hidden;}
+.srow .fill{height:100%; border-radius:4px; background:linear-gradient(90deg,#1AA7E0,#35D6FF); box-shadow:0 0 8px rgba(53,214,255,.3);}
+.srow.m .fill{background:linear-gradient(90deg,#B4761A,#FFC24A); box-shadow:0 0 8px rgba(255,194,74,.3);}
+.srow b{font-family:var(--num); font-size:12px; color:var(--text-1); text-align:right;}
+.srow.m b{color:var(--warn);}
+
+/* 左翼下：干线动态 */
+.lanes{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding-top:2px;}
+.lst{display:flex; gap:8px;}
+.lst .c{flex:1; text-align:center; background:rgba(53,214,255,.06); border:1px solid rgba(70,190,255,.18); padding:7px 4px;}
+.lst .c b{display:block; font-family:var(--num); font-size:20px; line-height:1.2; color:var(--text-1);}
+.lst .c span{font-size:10px; color:var(--text-3);}
+.llist{display:flex; flex-direction:column;}
+.lrow{display:flex; gap:7px; font-size:10.5px; color:var(--text-2); align-items:baseline; border-bottom:1px dashed rgba(90,200,255,.10); padding:3px 0;}
+.lrow:last-child{border-bottom:none;}
+.lrow i{font-style:normal; font-family:var(--num); color:var(--cyan-1); flex:none;}
+.lrow .no{font-family:var(--num); color:var(--text-1); font-weight:600;}
+.lrow .st{margin-left:auto; font-size:9.5px; color:var(--ok); flex:none;}
+.lrow .st.run{color:var(--cyan-1);}
+
+/* 右翼上：仓库利用率 TOP5 */
+.util{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding-top:2px;}
+.urow{display:grid; grid-template-columns:104px 1fr 44px; gap:8px; align-items:center; font-size:11px; color:var(--text-2);}
+.urow .track{height:8px; background:rgba(255,255,255,.08); border-radius:4px; overflow:hidden;}
+.urow .fill{height:100%; border-radius:4px; background:linear-gradient(90deg,#1AA7E0,#35D6FF); box-shadow:0 0 8px rgba(53,214,255,.3);}
+.urow.w .fill{background:linear-gradient(90deg,#B4761A,#FFC24A); box-shadow:0 0 8px rgba(255,194,74,.3);}
+.urow b{font-family:var(--num); font-size:12px; color:var(--text-1); text-align:right;}
+.urow.w b{color:var(--warn);}
+
+/* 右翼下：时效达成 */
+.sla{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding-top:2px;}
+.xrow{display:flex; align-items:baseline; gap:8px; font-size:11.5px; color:var(--text-2); border-bottom:1px dashed rgba(90,200,255,.10); padding-bottom:6px;}
+.xrow:last-child{border-bottom:none;}
+.xrow b{font-family:var(--num); font-size:19px; color:var(--text-1); margin-left:auto; line-height:1.1;}
+.xrow b.ok{color:var(--ok);} .xrow b.wn{color:var(--warn);}
+.xrow small{font-size:10px; color:var(--text-3); width:104px; text-align:right;}
+.map-panel{position:relative; min-height:0; height:100%; overflow:hidden; border:1px solid rgba(70,190,255,.10);
+  box-shadow:inset 0 0 26px rgba(53,214,255,.04);}
+/* 节点卡列：叠放在地图上层（方案七式），盖住地图西部空白区 */
+.node-col{position:absolute; left:10px; top:10px; bottom:10px; width:250px; z-index:9;
+  display:flex; flex-direction:column; gap:7px;}
+.ncard{flex:1; min-height:0; background:rgba(5,18,34,.82); border:1px solid rgba(70,190,255,.18); border-left-width:3px;
+  padding:4px 10px; cursor:pointer; display:flex; flex-direction:column; justify-content:center; gap:2px; transition:all .2s;}
+.ncard:hover{border-color:rgba(90,225,255,.4);}
+.ncard.on{border-color:rgba(90,225,255,.65); background:rgba(53,214,255,.12); box-shadow:0 0 16px rgba(53,214,255,.16);}
+.ncard .nh{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-1); font-weight:600;}
+.ncard .nh .st{margin-left:auto; font-size:9.5px; letter-spacing:2px; padding:1px 7px; border:1px solid; border-radius:2px;}
+.st.ok{color:var(--ok); border-color:rgba(43,227,164,.45);}
+.st.w{color:var(--warn); border-color:rgba(255,194,74,.5);}
+.st.bd{color:var(--danger); border-color:rgba(255,93,115,.5);}
+.ncard .nrow{display:flex; gap:13px; font-size:10.5px; color:var(--text-3); white-space:nowrap;}
+.ncard .nrow b{font-family:var(--num); font-size:12px; color:var(--text-1); font-weight:600;}
+.ncard .nrow b.wn{color:var(--warn);} .ncard .nrow b.bd{color:var(--danger);} .ncard .nrow b.ok{color:var(--ok);}
+
+.mk-reset{position:absolute; right:12px; top:10px; z-index:11; font-size:10px; color:var(--cyan-1);
+  border:1px solid rgba(53,214,255,.35); background:rgba(53,214,255,.08); padding:2px 9px; cursor:pointer; letter-spacing:1px;}
+.mk-reset:hover{background:rgba(53,214,255,.16);}
+.map-panel .hud{position:absolute; right:12px; top:38px; z-index:9; font-size:10px; color:var(--text-3);
+  display:flex; gap:12px; align-items:center; pointer-events:none;}
+.map-panel .hud i{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; box-shadow:0 0 6px currentColor;}
+.map-panel .hud .sep{opacity:.4;}
+.map-panel .hud .ln{border-top:2px dashed rgba(53,214,255,.55); width:24px; height:0;}
+#geoBox{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); overflow:hidden;
+  background:url('china-map-outline.png') no-repeat; background-size:130% 130%; background-position:50% 50%;}
+.map-panel .mk-hint{position:absolute; left:270px; bottom:8px; z-index:9; font-size:9.5px; color:var(--text-3); letter-spacing:.5px; pointer-events:none;}
+
+/* ===== 底部三面板 ===== */
+.bot{flex:none; height:196px; display:grid; grid-template-columns:1.2fr 1.15fr 1fr; gap:12px;}
+.chart-box{flex:1; min-height:0; position:relative;}
+.chart-box svg{width:100%; height:100%; display:block; overflow:visible;}
+
+/* 满足率对比 */
+.rates{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:space-between; padding:2px 0;}
+.rrow{display:grid; grid-template-columns:64px 1fr 52px; gap:8px; align-items:center; font-size:11.5px; color:var(--text-2);}
+.rrow .track{position:relative; height:9px; background:rgba(255,255,255,.08); border-radius:5px;}
+.rrow .fill{height:100%; border-radius:5px; background:linear-gradient(90deg,#1AA7E0,#35D6FF); box-shadow:0 0 8px rgba(53,214,255,.3);}
+.rrow.w .fill{background:linear-gradient(90deg,#C23A52,#FF5D73); box-shadow:0 0 8px rgba(255,93,115,.35);}
+.rrow.m .fill{background:linear-gradient(90deg,#B4761A,#FFC24A); box-shadow:0 0 8px rgba(255,194,74,.3);}
+.rrow .tick{position:absolute; left:70%; top:-3px; bottom:-3px; width:0; border-left:1.5px dashed rgba(170,215,255,.55);}
+.rrow b.n{font-family:var(--num); font-size:12.5px; color:var(--text-1); text-align:right;}
+.rhead{display:flex; font-size:10px; color:var(--text-3); gap:14px; border-bottom:1px solid rgba(90,200,255,.12); padding-bottom:3px;}
+.rhead .tg{margin-left:auto;} .rhead .tg::before{content:"┄"; margin-right:3px;}
+
+/* 异常队列 */
+.queue{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:space-between; padding:2px 0;}
+.qrow{display:grid; grid-template-columns:108px 58px 1fr 52px 46px; gap:8px; align-items:center;
+  font-size:11px; color:var(--text-2); border-bottom:1px dashed rgba(90,200,255,.10); padding:3px 2px;}
+.qrow:last-of-type{border-bottom:none;}
+.qrow .no{font-family:var(--num); color:var(--cyan-1);}
+.qrow .nd{color:var(--text-1);}
+.qrow .tm{font-family:var(--num); text-align:right; color:var(--text-2);}
+.qrow .tm.hot{color:var(--danger); font-weight:700;}
+.qrow .qs{font-size:10px; text-align:center; letter-spacing:1px; padding:1px 0; border:1px solid; border-radius:2px;}
+.qs.do{color:var(--info); border-color:rgba(90,169,255,.4);}
+.qs.wt{color:var(--warn); border-color:rgba(255,194,74,.5);}
+.qs.bd{color:var(--danger); border-color:rgba(255,93,115,.5);}
+.qfoot{font-size:10px; color:var(--text-3);}
+.qfoot b{color:var(--text-2); font-family:var(--num);}
+
+/* ticker 内容 */
+.ticker .move b{color:var(--text-1);}
+.ticker .move i{color:var(--cyan-1);}
+.ticker .move .bad{color:var(--danger);}
+.ev2{white-space:nowrap; margin-right:44px; color:var(--text-2); font-size:11.5px;}
+.ev2 i{font-style:normal; font-family:var(--num); color:var(--cyan-1); margin-right:6px;}
+.ev2 .lv{font-size:9.5px; padding:1px 6px; margin-right:8px; border:1px solid; letter-spacing:1px;}
+.ev2 .lv.h{color:var(--danger); border-color:rgba(255,93,115,.5);}
+.ev2 .lv.m{color:var(--warn); border-color:rgba(255,194,74,.45);}
+.ev2 .lv.l{color:var(--info); border-color:rgba(90,169,255,.35);}
+</style>
+</head>
+<body>
+<div class="viewport">
+<div class="stage" id="stage">
+  <section class="screen">
+    <header>
+      <div></div>
+      <div class="title-wrap"><span class="wing l"></span><span class="wing r"></span><h1>全国仓储物流运行大屏</h1></div>
+      <div class="h-right"><span class="js-clock">2026-11-03 10:20:00</span></div>
+    </header>
+
+    <main>
+      <!-- 结论层 KPI -->
+      <div class="kpis" id="kpiBand">
+        <div class="kpi"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 9l8-5 8 5v10H4z"/><path d="M9 19v-6h6v6"/></svg></div>
+          <div class="txt"><div class="n">在管仓库</div><div class="v" data-num="86">86<small>个</small></div><div class="d">覆盖城市 <i>47</i> · 自营 32 / 云仓 54</div></div></div>
+        <div class="kpi"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 7h13l5 5v5H3z"/><circle cx="8" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg></div>
+          <div class="txt"><div class="n">今日出库单量</div><div class="v" data-num="129380">129,380<small>单</small></div><div class="d">环比 <i class="up">▲ 4.6%</i> · 峰值 14:00</div></div></div>
+        <div class="kpi"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></div>
+          <div class="txt"><div class="n">订单满足率</div><div class="v" data-num="96.8" data-dec="1" data-suffix="%">96.8%</div><div class="d">目标 97 · 差 <i class="warn">0.2pt</i></div></div></div>
+        <div class="kpi"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M6 17l4-8h5l3 5"/><path d="M13 5h4l2 4"/></svg></div>
+          <div class="txt"><div class="n">干线准点率</div><div class="v" data-num="94.2" data-dec="1" data-suffix="%">94.2%</div><div class="d">环比 <i class="up">▲ 0.8pt</i></div></div></div>
+        <div class="kpi good"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></div>
+          <div class="txt"><div class="n">库存周转天数</div><div class="v" data-num="32.5" data-dec="1" data-suffix="天">32.5天</div><div class="d">环比 <i class="up">▼ 1.2 天</i> · 持续优化</div></div></div>
+        <div class="kpi hot"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4l8 14H4z"/><path d="M12 10v4M12 16v.5"/></svg></div>
+          <div class="txt"><div class="n">滞留异常单</div><div class="v" data-num="47">47<small>件</small></div><div class="d">华中 <i class="down">19</i> 集中 · 督办中</div></div></div>
+      </div>
+
+      <!-- 证据层：两翼列 + 中国地图（节点卡叠放在地图上层） -->
+      <div class="mid">
+      <div class="wingcol" id="wingL">
+        <div class="panel">
+          <div class="panel-h"><h2>区域吞吐占比</h2><span class="ext">今日 129,380 单</span></div>
+          <div class="share">
+            <div class="srow"><span>华东</span><div class="track"><div class="fill" style="width:100%"></div></div><b>26.9%</b></div>
+            <div class="srow"><span>华南</span><div class="track"><div class="fill" style="width:69%"></div></div><b>18.6%</b></div>
+            <div class="srow"><span>华北</span><div class="track"><div class="fill" style="width:61%"></div></div><b>16.5%</b></div>
+            <div class="srow"><span>西南</span><div class="track"><div class="fill" style="width:50%"></div></div><b>13.5%</b></div>
+            <div class="srow m"><span>华中</span><div class="track"><div class="fill" style="width:45%"></div></div><b>12.1%</b></div>
+            <div class="srow"><span>西北</span><div class="track"><div class="fill" style="width:26%"></div></div><b>7.1%</b></div>
+            <div class="srow"><span>东北</span><div class="track"><div class="fill" style="width:20%"></div></div><b>5.3%</b></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>干线动态</h2><span class="ext">今日</span></div>
+          <div class="lanes">
+            <div class="lst">
+              <div class="c"><b data-num="86">86</b><span>发运班次</span></div>
+              <div class="c"><b data-num="132">132</b><span>在途车次</span></div>
+              <div class="c"><b>94.2<small>%</small></b><span>准点率</span></div>
+            </div>
+            <div class="llist">
+              <div class="lrow"><i>10:18</i><span class="no">G2411</span><span>华东 → 华北 · 22 板</span><span class="st">准点发运</span></div>
+              <div class="lrow"><i>09:46</i><span class="no">G1109</span><span>华南 → 西南 · 18 板</span><span class="st">准点发运</span></div>
+              <div class="lrow"><i>09:22</i><span class="no">G0752</span><span>西南 → 华中 · 12 板</span><span class="st run">在途</span></div>
+              <div class="lrow"><i>08:55</i><span class="no">G3306</span><span>华中 → 西北 · 9 板</span><span class="st run">在途</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-panel" id="mapPanel">
+        <div class="node-col" id="nodeCards">
+          <div class="ncard" data-dmk="north" style="border-left-color:#2BE3A4;">
+            <div class="nh"><b>华北 · 北京</b><span class="st ok">达标</span></div>
+            <div class="nrow"><span>仓库 <b>12</b></span><span>吞吐 <b>21,340</b></span><span>满足率 <b class="ok">97.6%</b></span></div>
+          </div>
+          <div class="ncard" data-dmk="east" style="border-left-color:#2BE3A4;">
+            <div class="nh"><b>华东 · 上海</b><span class="st ok">达标</span></div>
+            <div class="nrow"><span>仓库 <b>18</b></span><span>吞吐 <b>34,820</b></span><span>满足率 <b class="ok">97.9%</b></span></div>
+          </div>
+          <div class="ncard" data-dmk="south" style="border-left-color:#2BE3A4;">
+            <div class="nh"><b>华南 · 广州</b><span class="st ok">达标</span></div>
+            <div class="nrow"><span>仓库 <b>14</b></span><span>吞吐 <b>24,110</b></span><span>满足率 <b class="ok">97.1%</b></span></div>
+          </div>
+          <div class="ncard" data-dmk="central" style="border-left-color:#FF5D73;">
+            <div class="nh"><b>华中 · 武汉</b><span class="st bd">告警</span></div>
+            <div class="nrow"><span>仓库 <b>13</b></span><span>吞吐 <b>15,660</b></span><span>满足率 <b class="bd">93.4%</b></span></div>
+          </div>
+          <div class="ncard" data-dmk="southwest" style="border-left-color:#FFC24A;">
+            <div class="nh"><b>西南 · 成都</b><span class="st w">关注</span></div>
+            <div class="nrow"><span>仓库 <b>12</b></span><span>吞吐 <b>17,420</b></span><span>满足率 <b class="wn">96.2%</b></span></div>
+          </div>
+          <div class="ncard" data-dmk="northwest" style="border-left-color:#FFC24A;">
+            <div class="nh"><b>西北 · 西安</b><span class="st w">关注</span></div>
+            <div class="nrow"><span>仓库 <b>9</b></span><span>吞吐 <b>9,140</b></span><span>满足率 <b class="wn">96.8%</b></span></div>
+          </div>
+          <div class="ncard" data-dmk="northeast" style="border-left-color:#2BE3A4;">
+            <div class="nh"><b>东北 · 沈阳</b><span class="st ok">达标</span></div>
+            <div class="nrow"><span>仓库 <b>8</b></span><span>吞吐 <b>6,890</b></span><span>满足率 <b class="ok">97.3%</b></span></div>
+          </div>
+        </div>
+
+        <div class="hud">
+          <span><i style="color:#2BE3A4;background:#2BE3A4"></i>达标 3</span>
+          <span><i style="color:#FFC24A;background:#FFC24A"></i>关注 2</span>
+          <span><i style="color:#FF5D73;background:#FF5D73"></i>告警 1</span>
+          <span class="sep">｜</span>
+          <span class="ln"></span>
+          <span>干线调拨</span>
+        </div>
+        <span class="mk-reset" id="mkReset">重置光点位置</span>
+        <div id="geoBox"></div>
+        <div class="mk-hint">光点 = 七大区域枢纽仓 · 可拖拽 · 点击与节点卡联动</div>
+      </div>
+
+      <div class="wingcol" id="wingR">
+        <div class="panel">
+          <div class="panel-h"><h2>仓库利用率 · TOP5</h2><span class="ext">≥95% 预警</span></div>
+          <div class="util">
+            <div class="urow w"><span>上海·外高桥仓</span><div class="track"><div class="fill" style="width:96.5%"></div></div><b>96.5%</b></div>
+            <div class="urow"><span>北京·顺义仓</span><div class="track"><div class="fill" style="width:94.2%"></div></div><b>94.2%</b></div>
+            <div class="urow"><span>广州·白云仓</span><div class="track"><div class="fill" style="width:92.8%"></div></div><b>92.8%</b></div>
+            <div class="urow"><span>成都·双流仓</span><div class="track"><div class="fill" style="width:90.6%"></div></div><b>90.6%</b></div>
+            <div class="urow"><span>武汉·光谷仓</span><div class="track"><div class="fill" style="width:88.3%"></div></div><b>88.3%</b></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>时效达成</h2><span class="ext">今日</span></div>
+          <div class="sla">
+            <div class="xrow"><span>出库及时率</span><b class="ok">98.2%</b><small>目标 98 · 达标 ✓</small></div>
+            <div class="xrow"><span>入库及时率</span><b class="wn">96.6%</b><small>目标 97 · 差 0.4pt</small></div>
+            <div class="xrow"><span>单均分拣时长</span><b>8.6<small> min</small></b><small>环比 ▼ 0.4 · 优化中</small></div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- 明细层 -->
+      <div class="bot">
+        <div class="panel" id="trendPanel">
+          <div class="panel-h"><h2>全网日出库单量 · 近 30 天</h2><span class="ext">单位：万单</span></div>
+          <div class="chart-box">
+            <svg id="trendSvg" viewBox="0 0 560 170" preserveAspectRatio="none" role="img" aria-label="近30天日出库单量趋势">
+              <defs>
+                <linearGradient id="tgA" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#35D6FF" stop-opacity=".28"/><stop offset="1" stop-color="#35D6FF" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g class="grid-line"><line x1="34" y1="24" x2="556" y2="24"/><line x1="34" y1="66" x2="556" y2="66"/><line x1="34" y1="108" x2="556" y2="108"/><line x1="34" y1="150" x2="556" y2="150"/></g>
+              <g class="axis" font-family="var(--num)"><text x="28" y="27" text-anchor="end">13.0</text><text x="28" y="69" text-anchor="end">12.0</text><text x="28" y="111" text-anchor="end">11.0</text><text x="28" y="153" text-anchor="end">10.0</text></g>
+              <path id="tgArea" fill="url(#tgA)"/>
+              <path id="tgLine" fill="none" stroke="#35D6FF" stroke-width="1.8" class="glow"/>
+              <circle id="tgDot" r="3" fill="#FFFFFF" class="glow"/>
+              <text id="tgEnd" text-anchor="end" fill="#EAF6FF" font-size="11" font-weight="700" font-family="var(--num)">12.94</text>
+              <g class="axis" font-family="var(--cn)"><text x="36" y="166">10-05</text><text x="280" y="166" text-anchor="middle">10-19</text><text x="552" y="166" text-anchor="end">11-03</text></g>
+            </svg>
+          </div>
+        </div>
+
+        <div class="panel" id="ratePanel">
+          <div class="panel-h"><h2>区域满足率 · 对照目标 97%</h2></div>
+          <div class="rates">
+            <div class="rhead"><span>区域枢纽</span><span class="tg">目标 97%</span></div>
+            <div class="rrow"><span>华东</span><div class="track"><span class="tick"></span><div class="fill" style="width:79%"></div></div><b class="n">97.9</b></div>
+            <div class="rrow"><span>华北</span><div class="track"><span class="tick"></span><div class="fill" style="width:76%"></div></div><b class="n">97.6</b></div>
+            <div class="rrow"><span>东北</span><div class="track"><span class="tick"></span><div class="fill" style="width:73%"></div></div><b class="n">97.3</b></div>
+            <div class="rrow"><span>西北</span><div class="track"><span class="tick"></span><div class="fill m" style="width:68%"></div></div><b class="n">96.8</b></div>
+            <div class="rrow"><span>西南</span><div class="track"><span class="tick"></span><div class="fill m" style="width:62%"></div></div><b class="n">96.2</b></div>
+            <div class="rrow w"><span>华中</span><div class="track"><span class="tick"></span><div class="fill" style="width:34%"></div></div><b class="n" style="color:var(--danger)">93.4</b></div>
+          </div>
+        </div>
+
+        <div class="panel" id="queuePanel">
+          <div class="panel-h"><h2>滞留异常队列 · 超 24h</h2><span class="ext">共 <b>47</b> 件</span></div>
+          <div class="queue">
+            <div class="qrow"><span class="no">WL****8821</span><span class="nd">华中·武汉</span><span>爆仓暂存 · 分拣积压</span><span class="tm hot">52h</span><span class="qs bd">督办</span></div>
+            <div class="qrow"><span class="no">WL****7306</span><span class="nd">华中·武汉</span><span>大件滞留 · 月台占满</span><span class="tm hot">41h</span><span class="qs bd">督办</span></div>
+            <div class="qrow"><span class="no">WL****5518</span><span class="nd">西南·成都</span><span>错分待回调拨</span><span class="tm">29h</span><span class="qs wt">处理中</span></div>
+            <div class="qrow"><span class="no">WL****4290</span><span class="nd">西北·西安</span><span>系统同步延迟</span><span class="tm">26h</span><span class="qs wt">处理中</span></div>
+            <div class="qrow"><span class="no">WL****3167</span><span class="nd">华东·上海</span><span>破损待定责</span><span class="tm">25h</span><span class="qs do">已派单</span></div>
+          </div>
+          <div class="qfoot">督办口径：滞留超 24h 自动升级 · 华中 19 件已挂 <b>3</b> 条整改工单，预计 48h 内清零</div>
+        </div>
+      </div>
+    </main>
+
+    <div class="legend-bar">
+      <span class="lb">图例</span>
+      <span><b style="color:#2BE3A4;background:#2BE3A4"></b>达标</span>
+      <span><b style="color:#FFC24A;background:#FFC24A"></b>关注</span>
+      <span><b style="color:#FF5D73;background:#FF5D73"></b>告警</span>
+      <span><b style="border-top:2px dashed #35D6FF; height:0; width:16px; border-radius:0;"></b>干线调拨</span>
+      <span class="note">示例数据演示 · 数据截止 2026-11-03 10:00 · 底图：outline 中国轮廓图</span>
+    </div>
+    <div class="ticker">
+      <span class="tag live">物流动态 · LIVE</span>
+      <div class="track"><div class="move">
+        <span class="ev2"><i>10:18</i><span class="lv l">发运</span><b>华东→华北 干线 G2411 准点发车</b> · 22 板</span>
+        <span class="ev2"><i>10:12</i><span class="lv h">督办</span><b>华中·武汉 WL****8821 滞留 52h</b> · 已升级区域经理</span>
+        <span class="ev2"><i>10:05</i><span class="lv l">入仓</span><b>西南·成都 云仓 CW07 卸货完成</b> · 1,820 件</span>
+        <span class="ev2"><i>09:57</i><span class="lv m">预警</span><b>西北·西安 满足率 96.8% 低于目标</b> · 关注中</span>
+        <span class="ev2"><i>09:46</i><span class="lv l">发运</span><b>华南→西南 干线 G1109 准点发车</b> · 18 板</span>
+        <span class="ev2"><i>09:31</i><span class="lv m">异常</span><b>华东·上海 WL****3167 破损定责中</b> · 已派单</span>
+        <span class="ev2"><i>10:18</i><span class="lv l">发运</span><b>华东→华北 干线 G2411 准点发车</b> · 22 板</span>
+        <span class="ev2"><i>10:12</i><span class="lv h">督办</span><b>华中·武汉 WL****8821 滞留 52h</b> · 已升级区域经理</span>
+        <span class="ev2"><i>10:05</i><span class="lv l">入仓</span><b>西南·成都 云仓 CW07 卸货完成</b> · 1,820 件</span>
+        <span class="ev2"><i>09:57</i><span class="lv m">预警</span><b>西北·西安 满足率 96.8% 低于目标</b> · 关注中</span>
+        <span class="ev2"><i>09:46</i><span class="lv l">发运</span><b>华南→西南 干线 G1109 准点发车</b> · 18 板</span>
+        <span class="ev2"><i>09:31</i><span class="lv m">异常</span><b>华东·上海 WL****3167 破损定责中</b> · 已派单</span>
+      </div></div>
+    </div>
+  </section>
+</div>
+</div>
+
+<script src="大屏基座.js"></script>
+<script>
+/* 趋势图：近 30 天日出库单量（万单） */
+(function(){
+  var v = [10.82,10.90,10.95,11.02,10.98,11.10,11.18,11.25,11.20,11.34,11.41,11.50,11.62,11.58,11.71,11.80,11.76,11.90,12.05,12.14,12.10,11.62,11.45,11.70,11.90,12.20,12.45,12.68,12.80,12.94];
+  function X(i){ return 36 + i * (516 / 29); }
+  function Y(t){ return 150 - (t - 10) * 42; }
+  function smooth(pts){
+    if(pts.length < 3){ return 'M' + pts.map(function(p){ return p[0] + ',' + p[1]; }).join(' L'); }
+    var d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+    for(var i = 0; i < pts.length - 1; i++){
+      var p0 = pts[Math.max(0, i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(pts.length-1, i+2)];
+      var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += 'C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' ' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+    }
+    return d;
+  }
+  var pts = v.map(function(t, i){ return [X(i), Y(t)]; });
+  document.getElementById('tgLine').setAttribute('d', smooth(pts));
+  document.getElementById('tgArea').setAttribute('d', smooth(pts) + ' L552,152 L36,152 Z');
+  var last = pts[29], dot = document.getElementById('tgDot');
+  dot.setAttribute('cx', last[0]); dot.setAttribute('cy', last[1]);
+  var end = document.getElementById('tgEnd');
+  end.setAttribute('x', 552); end.setAttribute('y', last[1] - 8);
+})();
+</script>
+<script>
+/* 地图光点配置：七大区域枢纽仓（底图 = outline 中国轮廓图，投影参数与其配套） */
+window.DVMAP = {
+  wrap: '#mapPanel', box: '#geoBox', reset: '#mkReset', lsVersion: 2,
+  fit: {ratio: 16/9},
+  projection: {center: [33.6, 104.6], zoom: 4.75, scale: 1.3},
+  markers: [
+    {k:'north',    lat:39.904, lng:116.407, c:'#2BE3A4', label:'华北·北京'},
+    {k:'east',     lat:31.230, lng:121.474, c:'#2BE3A4', label:'华东·上海'},
+    {k:'south',    lat:23.129, lng:113.264, c:'#2BE3A4', label:'华南·广州'},
+    {k:'central',  lat:30.593, lng:114.305, c:'#FF5D73', label:'华中·武汉'},
+    {k:'southwest',lat:30.572, lng:104.066, c:'#FFC24A', label:'西南·成都'},
+    {k:'northwest',lat:34.341, lng:108.940, c:'#FFC24A', label:'西北·西安'},
+    {k:'northeast',lat:41.805, lng:123.432, c:'#2BE3A4', label:'东北·沈阳'}
+  ],
+  arcs: [['north','east'], ['south','southwest'], ['central','northwest']]
+};
+</script>
+<script>
+/* 看板导读配置 */
+window.TOUR = {
+  autostart: true,
+  btnText: '看板导读',
+  steps: [
+    {sel: null, t: '全国仓储物流 · 一屏一句话',
+     d:'整屏回答一个问题：<b>全国仓储网络今天转得怎么样</b>。读法两条——先看 KPI 行拿结论，再看地图定位<b>哪个区域枢纽需要督办</b>（当前短板：华中·武汉），两翼列给结构与效率证据。共 9 站。'},
+    {sel: '#kpiBand', t: '第 1 层｜结论 —— 6 个数字读懂全局',
+     d:'在管仓库 <b>86 个</b>、今日出库 <b>129,380 单</b>给体量；满足率 <b>96.8%</b>（差目标 0.2pt）与干线准点 <b>94.2%</b> 给质量；周转 <b>32.5 天</b>在优化；滞留异常 <b>47 件</b>是需要立刻关注的事。'},
+    {sel: '#nodeCards', t: '证据｜七大区域节点卡 —— 谁好谁差',
+     d:'节点卡列<b>叠放在地图左上</b>（盖住西部空白区）：每张卡 = <b>一个区域枢纽</b>——仓库数、今日吞吐、满足率，左色条即状态（绿达标 / 琥珀关注 / 红告警）。<b>点击任意节点卡</b>，地图光点同步高亮并连线。'},
+    {sel: '#mapPanel', t: '专题｜中国地图 —— 空间定位短板',
+     d:'光点 = 七大区域枢纽仓，按真实地理落点；<b>光点可拖拽微调</b>（位置自动记忆），<b>点击与节点卡联动</b>；虚线弧 = 三条干线调拨路线（华东→华北、华南→西南、华中→西北）。<b>红点武汉</b>一眼锁定短板。'},
+    {sel: '#wingL', t: '两翼｜左列 —— 吞吐结构与干线',
+     d:'上：<b>区域吞吐占比</b>——华东 26.9% 扛大旗，华中 12.1%（琥珀）与其告警状态呼应；下：<b>干线动态</b>——今日发运 86 班、在途 132 车、准点 94.2%，最近班次实时刷出。'},
+    {sel: '#wingR', t: '两翼｜右列 —— 仓内效率',
+     d:'上：<b>仓库利用率 TOP5</b>——上海外高桥 96.5% 过阈值预警（拥堵风险），武汉光谷 88.3% 还有余量；下：<b>时效达成</b>——出库及时 98.2% 达标，入库 96.6% 差 0.4pt，单均分拣 8.6 分钟持续优化。'},
+    {sel: '#trendPanel', t: '明细｜出库趋势 —— 量的走势',
+     d:'近 30 天日出库从 <b>10.8 万</b>爬到 <b>12.94 万单</b>；10 月末的凹坑是<b>华中暴雨扰动</b>（同期武汉满足率同步下探），已恢复上行。'},
+    {sel: '#ratePanel', t: '明细｜满足率对照目标 —— 差在哪',
+     d:'虚线刻度 = 目标 <b>97%</b>。华东/华北/东北/华南在目标线上方，西北/西南贴线，<b>华中 93.4%</b> 显著掉队——与地图红点、滞留队列互相印证。'},
+    {sel: '#queuePanel', t: '明细｜滞留异常队列 —— 现在就办',
+     d:'超 24h 滞留自动升级督办：<b>武汉两件 40h+</b> 已升级区域经理；全部 47 件中华中占 19，已挂 3 条整改工单，<b>预计 48h 内清零</b>。'},
+    {sel: null, t: '收尾｜读屏路线回顾',
+     d:'一句话：<b>量在涨、质贴线、华中掉队已督办</b>。横读 = 结论→证据→明细；竖看 = KPI → 节点卡 ↔ 地图联动 → 明细三表。页面为<b>示例数据</b>演示，接真实数据时口径见方案 md。'}
+  ]
+};
+</script>
+<script src="大屏编辑.js"></script>
+<script src="大屏导读.js"></script>
+<script src="大屏地图.js"></script>
+</body>
+</html>
