@@ -6,7 +6,8 @@
 
 - GitHub Pages 入口：<https://wikkygao.github.io/dataview-visualize/>
 - 直达大屏：[大屏-方案一-全国仓储物流.html](https://wikkygao.github.io/dataview-visualize/%E5%A4%A7%E5%B1%8F-%E6%96%B9%E6%A1%88%E4%B8%80-%E5%85%A8%E5%9B%BD%E4%BB%93%E5%82%A8%E7%89%A9%E6%B5%81.html)（中国地图光点可拖拽、点击节点卡联动、右上角「看板导读」逐站讲解、双击面板标题可改文案）
-- Gitee 备选：<https://saugage.gitee.io/dataview-visualize/>（gh-pages 分支已同步；Gitee Pages 需在仓库页「服务 → Gitee Pages」手动开启一次后生效）
+
+> 示例统一由 GitHub Pages 提供（Gitee 用户同样可直接访问上述链接）。Gitee Pages 服务已于 2024 年 5 月下线且暂无恢复计划，gh-pages 分支内容已同步到 Gitee 仓库备查。
 
 ## 能力亮点
 
